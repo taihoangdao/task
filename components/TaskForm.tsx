@@ -2,10 +2,11 @@
 'use client'
 
 import { useState } from 'react'
-import { format } from 'date-fns'
+import { format, addDays, addWeeks, addMonths } from 'date-fns'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Dialog,
   DialogContent,
@@ -20,6 +21,7 @@ interface TaskFormProps {
   onOpenChange: (open: boolean) => void
   date: Date
   onSubmit: (task: CreateTaskInput) => Promise<void>
+  onSubmitBatch?: (tasks: CreateTaskInput[]) => Promise<void>
 }
 
 const priorityOptions: { value: Priority; label: string; color: string }[] = [
@@ -46,7 +48,7 @@ const colorOptions = [
   '#E91E63',
 ]
 
-export function TaskForm({ open, onOpenChange, date, onSubmit }: TaskFormProps) {
+export function TaskForm({ open, onOpenChange, date, onSubmit, onSubmitBatch }: TaskFormProps) {
   const [formData, setFormData] = useState<CreateTaskInput>({
     title: '',
     description: '',
@@ -57,31 +59,123 @@ export function TaskForm({ open, onOpenChange, date, onSubmit }: TaskFormProps) 
     recurring_type: null,
   })
   const [loading, setLoading] = useState(false)
+  const [noEndDate, setNoEndDate] = useState(true)
+  const [recurringEndDate, setRecurringEndDate] = useState<string>(() => {
+    return format(addDays(date, 30), 'yyyy-MM-dd')
+  })
 
   const handleChange = (field: keyof CreateTaskInput, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }))
   }
 
+  const handleRecurringChange = (value: RecurringType) => {
+    setFormData(prev => ({
+      ...prev,
+      is_recurring: value !== null,
+      recurring_type: value,
+    }))
+    if (value !== null) {
+      setNoEndDate(true)
+      const endDate = addDays(new Date(formData.date), 30)
+      setRecurringEndDate(format(endDate, 'yyyy-MM-dd'))
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
     if (!formData.title.trim()) {
       alert('Vui lòng nhập tiêu đề task')
       return
     }
 
     setLoading(true)
-    await onSubmit(formData)
-    setLoading(false)
-    setFormData({
-      title: '',
-      description: '',
-      date: format(date, 'yyyy-MM-dd'),
-      priority: 'medium',
-      color: '#4A6CF7',
-      is_recurring: false,
-      recurring_type: null,
-    })
-    onOpenChange(false)
+
+    try {
+      // Nếu là task lặp lại
+      if (formData.is_recurring && formData.recurring_type) {
+        const startDate = new Date(formData.date)
+        let endDate: Date
+
+        if (noEndDate) {
+          endDate = addDays(startDate, 365) // 1 năm
+        } else {
+          endDate = new Date(recurringEndDate)
+          if (endDate < startDate) {
+            alert('Ngày kết thúc phải sau ngày bắt đầu')
+            setLoading(false)
+            return
+          }
+        }
+
+        // Tạo mảng tasks
+        const tasks: CreateTaskInput[] = []
+        let currentDate = new Date(startDate)
+        let count = 0
+        const MAX_TASKS = 365
+
+        while (currentDate <= endDate && count < MAX_TASKS) {
+          tasks.push({
+            ...formData,
+            date: format(currentDate, 'yyyy-MM-dd'),
+            is_recurring: false,
+            recurring_type: null,
+          })
+
+          switch (formData.recurring_type) {
+            case 'daily':
+              currentDate = addDays(currentDate, 1)
+              break
+            case 'weekly':
+              currentDate = addWeeks(currentDate, 1)
+              break
+            case 'monthly':
+              currentDate = addMonths(currentDate, 1)
+              break
+            default:
+              currentDate = addDays(currentDate, 1)
+          }
+          count++
+        }
+
+        // Gọi batch - chỉ 1 lần duy nhất
+        if (onSubmitBatch) {
+          await onSubmitBatch(tasks)
+        } else {
+          // Fallback: tạo từng task
+          for (const task of tasks) {
+            await onSubmit(task)
+          }
+        }
+
+        console.log(`✅ Đã tạo ${tasks.length} task lặp lại`)
+        onOpenChange(false)
+      } else {
+        // Task thường
+        await onSubmit({
+          ...formData,
+          date: formData.date,
+        })
+        onOpenChange(false)
+      }
+    } catch (error) {
+      console.error('❌ Lỗi khi tạo task:', error)
+      alert('Có lỗi xảy ra khi tạo task. Vui lòng thử lại!')
+    } finally {
+      setLoading(false)
+      // Reset form
+      setFormData({
+        title: '',
+        description: '',
+        date: format(date, 'yyyy-MM-dd'),
+        priority: 'medium',
+        color: '#4A6CF7',
+        is_recurring: false,
+        recurring_type: null,
+      })
+      setNoEndDate(true)
+      setRecurringEndDate(format(addDays(date, 30), 'yyyy-MM-dd'))
+    }
   }
 
   return (
@@ -95,6 +189,7 @@ export function TaskForm({ open, onOpenChange, date, onSubmit }: TaskFormProps) 
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+          {/* Tiêu đề */}
           <div>
             <Label htmlFor="title">Tiêu đề *</Label>
             <Input
@@ -106,6 +201,7 @@ export function TaskForm({ open, onOpenChange, date, onSubmit }: TaskFormProps) 
             />
           </div>
 
+          {/* Mô tả */}
           <div>
             <Label htmlFor="description">Mô tả</Label>
             <Input
@@ -117,6 +213,7 @@ export function TaskForm({ open, onOpenChange, date, onSubmit }: TaskFormProps) 
             />
           </div>
 
+          {/* Thời gian */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label htmlFor="start_time">Bắt đầu</Label>
@@ -140,6 +237,7 @@ export function TaskForm({ open, onOpenChange, date, onSubmit }: TaskFormProps) 
             </div>
           </div>
 
+          {/* Độ ưu tiên */}
           <div>
             <Label>Độ ưu tiên</Label>
             <div className="flex gap-2 mt-1">
@@ -161,6 +259,7 @@ export function TaskForm({ open, onOpenChange, date, onSubmit }: TaskFormProps) 
             </div>
           </div>
 
+          {/* Màu sắc */}
           <div>
             <Label>Màu sắc</Label>
             <div className="flex gap-2 mt-1 flex-wrap">
@@ -180,6 +279,7 @@ export function TaskForm({ open, onOpenChange, date, onSubmit }: TaskFormProps) 
             </div>
           </div>
 
+          {/* Lặp lại */}
           <div>
             <Label>Lặp lại</Label>
             <div className="flex gap-2 mt-1 flex-wrap">
@@ -187,10 +287,7 @@ export function TaskForm({ open, onOpenChange, date, onSubmit }: TaskFormProps) 
                 <button
                   key={option.value || 'none'}
                   type="button"
-                  onClick={() => {
-                    handleChange('is_recurring', option.value !== null)
-                    handleChange('recurring_type', option.value)
-                  }}
+                  onClick={() => handleRecurringChange(option.value)}
                   className={`px-3 py-1.5 rounded-full text-sm transition-all ${
                     (formData.is_recurring ? formData.recurring_type === option.value : option.value === null)
                       ? 'bg-blue-100 text-blue-700 border border-blue-300'
@@ -203,15 +300,64 @@ export function TaskForm({ open, onOpenChange, date, onSubmit }: TaskFormProps) 
             </div>
           </div>
 
+          {/* Cấu hình lặp lại */}
+          {formData.is_recurring && formData.recurring_type && (
+            <div className="bg-gray-50 rounded-lg p-4 space-y-3 border border-gray-200">
+              <p className="text-sm font-medium text-gray-700">
+                ⏰ Cấu hình lặp lại
+              </p>
+              
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="noEndDate"
+                  checked={noEndDate}
+                  onCheckedChange={(checked) => setNoEndDate(checked === true)}
+                />
+                <Label htmlFor="noEndDate" className="text-sm cursor-pointer">
+                  Không có ngày kết thúc
+                </Label>
+              </div>
+
+              {!noEndDate && (
+                <div>
+                  <Label htmlFor="recurring_end_date" className="text-sm">
+                    Ngày kết thúc
+                  </Label>
+                  <Input
+                    id="recurring_end_date"
+                    type="date"
+                    value={recurringEndDate}
+                    onChange={(e) => setRecurringEndDate(e.target.value)}
+                    className="mt-1"
+                    min={formData.date}
+                  />
+                </div>
+              )}
+
+              <p className="text-xs text-gray-400">
+                {noEndDate 
+                  ? `📅 Task sẽ lặp lại từ ${format(new Date(formData.date), 'dd/MM/yyyy')} đến không giới hạn`
+                  : `📅 Task sẽ lặp lại từ ${format(new Date(formData.date), 'dd/MM/yyyy')} đến ${format(new Date(recurringEndDate), 'dd/MM/yyyy')}`
+                }
+              </p>
+            </div>
+          )}
+
+          {/* Buttons */}
           <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
             <Button
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
+              disabled={loading}
             >
               Hủy
             </Button>
-            <Button type="submit" disabled={loading} className="bg-blue-600 hover:bg-blue-700 text-white">
+            <Button 
+              type="submit" 
+              disabled={loading} 
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
               {loading ? 'Đang tạo...' : 'Tạo công việc'}
             </Button>
           </div>

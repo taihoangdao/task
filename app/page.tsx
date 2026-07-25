@@ -2,19 +2,20 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { format, isToday, isSameDay } from 'date-fns'
+import { format, isToday } from 'date-fns'
 import { vi } from 'date-fns/locale'
 import { ChevronLeft, ChevronRight, Plus, CalendarDays } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { TaskList } from '@/components/TaskList'
 import { TaskForm } from '@/components/TaskForm'
 import { EditTaskForm } from '@/components/EditTaskForm'
-import { 
-  getTasksByDate, 
-  toggleTaskCompletion, 
-  createTask, 
-  updateTask, 
-  deleteTask 
+import {
+  getTasksByDate,
+  toggleTaskCompletion,
+  createTask,
+  createMultipleTasks,
+  updateTask,
+  deleteTask
 } from '@/lib/taskService'
 import { Task, CreateTaskInput } from '@/types/task'
 
@@ -95,19 +96,29 @@ export default function Home() {
     }
   }, [fetchTasks])
 
+  // ========== CREATE TASK (QUAN TRỌNG) ==========
+  // Tạo 1 task đơn
   const handleCreateTask = useCallback(async (taskData: CreateTaskInput) => {
     try {
-      const newTask = await createTask({
-        ...taskData,
-        date: format(selectedDate, 'yyyy-MM-dd')
-      })
-      if (newTask) {
-        await fetchTasks()
-      }
+      await createTask(taskData)
+      await fetchTasks() // Fetch lại để cập nhật danh sách
     } catch (error) {
       console.error('Lỗi khi tạo task:', error)
+      throw error
     }
-  }, [selectedDate, fetchTasks])
+  }, [fetchTasks])
+
+  // Tạo nhiều task (batch) - DÙNG CHO LẶP LẠI
+  const handleCreateMultipleTasks = useCallback(async (tasksData: CreateTaskInput[]) => {
+    try {
+      await createMultipleTasks(tasksData)
+      // Fetch lại 1 lần duy nhất sau khi tạo batch
+      await fetchTasks()
+    } catch (error) {
+      console.error('Lỗi khi tạo nhiều tasks:', error)
+      throw error
+    }
+  }, [fetchTasks])
 
   // ========== DATE NAVIGATION ==========
   const changeDate = useCallback((days: number) => {
@@ -136,7 +147,6 @@ export default function Home() {
   const isSelectedDateToday = isToday(selectedDate)
 
   // ========== RENDER ==========
-  // Tránh hydration error
   if (!mounted) {
     return null
   }
@@ -264,6 +274,7 @@ export default function Home() {
         onOpenChange={setFormOpen}
         date={selectedDate}
         onSubmit={handleCreateTask}
+        onSubmitBatch={handleCreateMultipleTasks}
       />
 
       <EditTaskForm
