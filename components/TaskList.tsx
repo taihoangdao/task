@@ -1,7 +1,7 @@
 // components/TaskList.tsx
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'  // Thêm useEffect
 import {
   DndContext,
   closestCenter,
@@ -41,10 +41,10 @@ export function TaskList({
   const [items, setItems] = useState(tasks)
   const [isDragging, setIsDragging] = useState(false)
 
-  // Cập nhật khi props tasks thay đổi
-  useState(() => {
+  // Sửa useEffect để cập nhật items khi tasks thay đổi
+  useEffect(() => {
     setItems(tasks)
-  }, [tasks])
+  }, [tasks])  // Đã sửa: bỏ cặp ngoặc thừa
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
