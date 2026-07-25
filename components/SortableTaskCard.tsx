@@ -10,12 +10,14 @@ interface SortableTaskCardProps {
   task: Task
   onToggleComplete: (id: number, completed: boolean) => void
   onClick?: () => void
+  disabled?: boolean // Thêm prop để vô hiệu hóa drag khi vuốt
 }
 
-export function SortableTaskCard({ 
-  task, 
-  onToggleComplete, 
-  onClick 
+export function SortableTaskCard({
+  task,
+  onToggleComplete,
+  onClick,
+  disabled = false,
 }: SortableTaskCardProps) {
   const {
     attributes,
@@ -24,7 +26,7 @@ export function SortableTaskCard({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: task.id })
+  } = useSortable({ id: task.id, disabled })
 
   const style = {
     transform: CSS.Transform.toString(transform),

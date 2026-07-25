@@ -15,12 +15,11 @@ import {
   createTask,
   createMultipleTasks,
   updateTask,
-  deleteTask
+  deleteTask,
 } from '@/lib/taskService'
 import { Task, CreateTaskInput } from '@/types/task'
 
 export default function Home() {
-  // ========== STATES ==========
   const [tasks, setTasks] = useState<Task[]>([])
   const [selectedDate, setSelectedDate] = useState<Date>(new Date())
   const [loading, setLoading] = useState<boolean>(true)
@@ -29,12 +28,10 @@ export default function Home() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [mounted, setMounted] = useState<boolean>(false)
 
-  // ========== MOUNTED ==========
   useEffect(() => {
     setMounted(true)
   }, [])
 
-  // ========== FETCH TASKS ==========
   const fetchTasks = useCallback(async () => {
     setLoading(true)
     try {
@@ -52,77 +49,83 @@ export default function Home() {
     fetchTasks()
   }, [fetchTasks])
 
-  // ========== HANDLERS ==========
-  
-  const handleToggleComplete = useCallback(async (id: number, completed: boolean) => {
-    try {
-      const updated = await toggleTaskCompletion(id, completed)
-      if (updated) {
-        setTasks(prevTasks => 
-          prevTasks.map(task => 
-            task.id === id ? updated : task
+  const handleToggleComplete = useCallback(
+    async (id: number, completed: boolean) => {
+      try {
+        const updated = await toggleTaskCompletion(id, completed)
+        if (updated) {
+          setTasks((prevTasks) =>
+            prevTasks.map((task) => (task.id === id ? updated : task))
           )
-        )
+        }
+      } catch (error) {
+        console.error('Lỗi khi cập nhật trạng thái task:', error)
       }
-    } catch (error) {
-      console.error('Lỗi khi cập nhật trạng thái task:', error)
-    }
-  }, [])
+    },
+    []
+  )
 
   const handleTaskClick = useCallback((task: Task) => {
     setSelectedTask(task)
     setEditFormOpen(true)
   }, [])
 
-  const handleUpdateTask = useCallback(async (id: number, data: Partial<CreateTaskInput>) => {
-    try {
-      const updated = await updateTask({ id, ...data })
-      if (updated) {
-        await fetchTasks()
+  const handleUpdateTask = useCallback(
+    async (id: number, data: Partial<CreateTaskInput>) => {
+      try {
+        const updated = await updateTask({ id, ...data })
+        if (updated) {
+          await fetchTasks()
+        }
+      } catch (error) {
+        console.error('Lỗi khi cập nhật task:', error)
       }
-    } catch (error) {
-      console.error('Lỗi khi cập nhật task:', error)
-    }
-  }, [fetchTasks])
+    },
+    [fetchTasks]
+  )
 
-  const handleDeleteTask = useCallback(async (id: number) => {
-    try {
-      const success = await deleteTask(id)
-      if (success) {
-        await fetchTasks()
+  const handleDeleteTask = useCallback(
+    async (id: number) => {
+      try {
+        const success = await deleteTask(id)
+        if (success) {
+          await fetchTasks()
+        }
+      } catch (error) {
+        console.error('Lỗi khi xóa task:', error)
       }
-    } catch (error) {
-      console.error('Lỗi khi xóa task:', error)
-    }
-  }, [fetchTasks])
+    },
+    [fetchTasks]
+  )
 
-  // ========== CREATE TASK (QUAN TRỌNG) ==========
-  // Tạo 1 task đơn
-  const handleCreateTask = useCallback(async (taskData: CreateTaskInput) => {
-    try {
-      await createTask(taskData)
-      await fetchTasks() // Fetch lại để cập nhật danh sách
-    } catch (error) {
-      console.error('Lỗi khi tạo task:', error)
-      throw error
-    }
-  }, [fetchTasks])
+  const handleCreateTask = useCallback(
+    async (taskData: CreateTaskInput) => {
+      try {
+        await createTask(taskData)
+        await fetchTasks()
+      } catch (error) {
+        console.error('Lỗi khi tạo task:', error)
+        throw error
+      }
+    },
+    [fetchTasks]
+  )
 
-  // Tạo nhiều task (batch) - DÙNG CHO LẶP LẠI
-  const handleCreateMultipleTasks = useCallback(async (tasksData: CreateTaskInput[]) => {
-    try {
-      await createMultipleTasks(tasksData)
-      // Fetch lại 1 lần duy nhất sau khi tạo batch
-      await fetchTasks()
-    } catch (error) {
-      console.error('Lỗi khi tạo nhiều tasks:', error)
-      throw error
-    }
-  }, [fetchTasks])
+  const handleCreateMultipleTasks = useCallback(
+    async (tasksData: CreateTaskInput[]) => {
+      try {
+        await createMultipleTasks(tasksData)
+        await fetchTasks()
+      } catch (error) {
+        console.error('Lỗi khi tạo nhiều tasks:', error)
+        throw error
+      }
+    },
+    [fetchTasks]
+  )
 
-  // ========== DATE NAVIGATION ==========
   const changeDate = useCallback((days: number) => {
-    setSelectedDate(prevDate => {
+    setSelectedDate((prevDate) => {
       const newDate = new Date(prevDate)
       newDate.setDate(newDate.getDate() + days)
       return newDate
@@ -133,27 +136,21 @@ export default function Home() {
     setSelectedDate(new Date())
   }, [])
 
-  // ========== FORMAT HELPERS ==========
   const formatDateDisplay = useCallback((date: Date) => {
     if (isToday(date)) {
       return 'Hôm nay'
     }
-    return format(date, "EEEE, dd/MM/yyyy", { locale: vi })
+    return format(date, 'EEEE, dd/MM/yyyy', { locale: vi })
   }, [])
 
-  // ========== STATS ==========
-  const completedTasks = tasks.filter(t => t.is_completed).length
+  const completedTasks = tasks.filter((t) => t.is_completed).length
   const pendingTasks = tasks.length - completedTasks
   const isSelectedDateToday = isToday(selectedDate)
 
-  // ========== RENDER ==========
-  if (!mounted) {
-    return null
-  }
+  if (!mounted) return null
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* ===== HEADER ===== */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-10 shadow-sm">
         <div className="max-w-4xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
@@ -163,7 +160,7 @@ export default function Home() {
                 Timeline
               </h1>
             </div>
-            
+
             <div className="flex items-center gap-1 md:gap-2">
               <Button
                 variant="outline"
@@ -174,16 +171,16 @@ export default function Home() {
               >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-              
+
               <Button
-                variant={isSelectedDateToday ? "default" : "outline"}
+                variant={isSelectedDateToday ? 'default' : 'outline'}
                 size="sm"
                 onClick={goToToday}
                 className="text-xs md:text-sm"
               >
                 Hôm nay
               </Button>
-              
+
               <Button
                 variant="outline"
                 size="sm"
@@ -195,14 +192,14 @@ export default function Home() {
               </Button>
             </div>
           </div>
-          
+
           <div className="mt-3 flex items-center justify-between">
             <h2 className="text-base md:text-lg font-medium text-gray-700 capitalize">
               {formatDateDisplay(selectedDate)}
             </h2>
-            
-            <Button 
-              size="sm" 
+
+            <Button
+              size="sm"
               className="gap-1 bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
               onClick={() => setFormOpen(true)}
             >
@@ -214,7 +211,6 @@ export default function Home() {
         </div>
       </header>
 
-      {/* ===== MAIN CONTENT ===== */}
       <main className="max-w-4xl mx-auto px-4 py-6">
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20">
@@ -227,9 +223,9 @@ export default function Home() {
               tasks={tasks}
               onToggleComplete={handleToggleComplete}
               onTaskClick={handleTaskClick}
+              onDelete={handleDeleteTask}
             />
-            
-            {/* ===== STATS ===== */}
+
             <div className="mt-8 p-4 bg-white rounded-xl shadow-sm border border-gray-100">
               <div className="grid grid-cols-3 gap-4 text-center">
                 <div>
@@ -251,15 +247,12 @@ export default function Home() {
                   <div className="text-xs text-gray-500">Chưa hoàn thành</div>
                 </div>
               </div>
-              
-              {/* Progress bar */}
+
               {tasks.length > 0 && (
                 <div className="mt-3 h-2 bg-gray-200 rounded-full overflow-hidden">
-                  <div 
+                  <div
                     className="h-full bg-green-500 rounded-full transition-all duration-500"
-                    style={{ 
-                      width: `${(completedTasks / tasks.length) * 100}%` 
-                    }}
+                    style={{ width: `${(completedTasks / tasks.length) * 100}%` }}
                   />
                 </div>
               )}
@@ -268,7 +261,6 @@ export default function Home() {
         )}
       </main>
 
-      {/* ===== MODALS ===== */}
       <TaskForm
         open={formOpen}
         onOpenChange={setFormOpen}

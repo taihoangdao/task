@@ -1,7 +1,7 @@
 // components/TaskList.tsx
 'use client'
 
-import { useState, useEffect } from 'react'  // Thêm useEffect
+import { useState, useEffect } from 'react'
 import {
   DndContext,
   closestCenter,
@@ -22,29 +22,30 @@ import {
   restrictToParentElement,
 } from '@dnd-kit/modifiers'
 import { Task } from '@/types/task'
-import { SortableTaskCard } from './SortableTaskCard'
+import { SwipeableTaskCard } from './SwipeableTaskCard'
 import { updateTaskPositions } from '@/lib/taskService'
 
 interface TaskListProps {
   tasks: Task[]
   onToggleComplete: (id: number, completed: boolean) => void
   onTaskClick: (task: Task) => void
+  onDelete: (id: number) => void // Thêm prop xóa
   onTasksReordered?: (tasks: Task[]) => void
 }
 
-export function TaskList({ 
-  tasks, 
-  onToggleComplete, 
+export function TaskList({
+  tasks,
+  onToggleComplete,
   onTaskClick,
-  onTasksReordered 
+  onDelete,
+  onTasksReordered,
 }: TaskListProps) {
   const [items, setItems] = useState(tasks)
   const [isDragging, setIsDragging] = useState(false)
 
-  // Sửa useEffect để cập nhật items khi tasks thay đổi
   useEffect(() => {
     setItems(tasks)
-  }, [tasks])  // Đã sửa: bỏ cặp ngoặc thừa
+  }, [tasks])
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -75,7 +76,6 @@ export function TaskList({
       const newIndex = items.findIndex((item) => item.id === overId)
 
       const newItems = arrayMove(items, oldIndex, newIndex)
-      
       const updatedItems = newItems.map((item, index) => ({
         ...item,
         position: index,
@@ -129,7 +129,11 @@ export function TaskList({
       onDragEnd={handleDragEnd}
       modifiers={[restrictToVerticalAxis, restrictToParentElement]}
     >
-      <div className={`space-y-6 transition-opacity ${isDragging ? 'opacity-80' : 'opacity-100'}`}>
+      <div
+        className={`space-y-6 transition-opacity ${
+          isDragging ? 'opacity-80' : 'opacity-100'
+        }`}
+      >
         {sortedGroups.map((hour) => (
           <div key={hour}>
             {hour !== 'other' && (
@@ -139,16 +143,17 @@ export function TaskList({
               </div>
             )}
             <SortableContext
-              items={groupedTasks[hour].map(task => task.id)}
+              items={groupedTasks[hour].map((task) => task.id)}
               strategy={verticalListSortingStrategy}
             >
               <div>
                 {groupedTasks[hour].map((task) => (
-                  <SortableTaskCard
+                  <SwipeableTaskCard
                     key={task.id}
                     task={task}
                     onToggleComplete={onToggleComplete}
-                    onClick={() => onTaskClick(task)}
+                    onTaskClick={onTaskClick}
+                    onDelete={onDelete}
                   />
                 ))}
               </div>
