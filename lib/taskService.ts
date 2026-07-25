@@ -135,7 +135,7 @@ export async function createMultipleTasks(tasks: CreateTaskInput[]): Promise<Tas
     // 2. Kiểm tra task đã tồn tại trong các ngày này
     const { data: existingTasks, error: fetchError } = await supabase
       .from('tasks')
-      .select('date, title, start_time')
+      .select('date, title, start_time, recurring_group_id')
       .in('date', uniqueDates)
 
     if (fetchError) {
@@ -279,6 +279,56 @@ export async function deleteTask(id: number): Promise<boolean> {
   } catch (error) {
     console.error(`❌ Lỗi không xác định khi xóa task:`, error)
     return false
+  }
+}
+
+/**
+ * Xóa tất cả task trong cùng một nhóm lặp lại
+ * @param groupId - ID của nhóm lặp lại
+ * @returns Số lượng task đã xóa
+ */
+export async function deleteTasksByRecurringGroup(groupId: string): Promise<number> {
+  try {
+    const { error, count } = await supabase
+      .from('tasks')
+      .delete()
+      .eq('recurring_group_id', groupId)
+      .select('id', { count: 'exact', head: true })
+
+    if (error) {
+      console.error(`❌ Lỗi khi xóa nhóm lặp lại ${groupId}:`, error)
+      return -1
+    }
+
+    console.log(`✅ Đã xóa ${count} task trong nhóm ${groupId}`)
+    return count || 0
+  } catch (error) {
+    console.error('❌ Lỗi không xác định khi xóa nhóm lặp lại:', error)
+    return -1
+  }
+}
+
+/**
+ * Xóa tất cả task (cẩn thận khi dùng)
+ */
+export async function deleteAllTasks(): Promise<number> {
+  try {
+    const { error, count } = await supabase
+      .from('tasks')
+      .delete()
+      .neq('id', 0)
+      .select('id', { count: 'exact', head: true })
+
+    if (error) {
+      console.error('❌ Lỗi khi xóa tất cả tasks:', error)
+      return -1
+    }
+
+    console.log(`✅ Đã xóa ${count} task`)
+    return count || 0
+  } catch (error) {
+    console.error('❌ Lỗi không xác định khi xóa tất cả:', error)
+    return -1
   }
 }
 

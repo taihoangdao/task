@@ -16,6 +16,7 @@ import {
   createMultipleTasks,
   updateTask,
   deleteTask,
+  deleteTasksByRecurringGroup,
 } from '@/lib/taskService'
 import { Task, CreateTaskInput } from '@/types/task'
 
@@ -98,6 +99,21 @@ export default function Home() {
     [fetchTasks]
   )
 
+  const handleDeleteGroup = useCallback(
+    async (groupId: string) => {
+      try {
+        const count = await deleteTasksByRecurringGroup(groupId)
+        if (count >= 0) {
+          console.log(`✅ Đã xóa ${count} task trong nhóm ${groupId}`)
+          await fetchTasks()
+        }
+      } catch (error) {
+        console.error('Lỗi khi xóa nhóm task:', error)
+      }
+    },
+    [fetchTasks]
+  )
+
   const handleCreateTask = useCallback(
     async (taskData: CreateTaskInput) => {
       try {
@@ -114,7 +130,9 @@ export default function Home() {
   const handleCreateMultipleTasks = useCallback(
     async (tasksData: CreateTaskInput[]) => {
       try {
-        await createMultipleTasks(tasksData)
+        console.log(`📝 Đang tạo ${tasksData.length} task...`)
+        const result = await createMultipleTasks(tasksData)
+        console.log(`✅ Đã tạo ${result.length} task thành công`)
         await fetchTasks()
       } catch (error) {
         console.error('Lỗi khi tạo nhiều tasks:', error)
@@ -224,6 +242,7 @@ export default function Home() {
               onToggleComplete={handleToggleComplete}
               onTaskClick={handleTaskClick}
               onDelete={handleDeleteTask}
+              onDeleteGroup={handleDeleteGroup}
             />
 
             <div className="mt-8 p-4 bg-white rounded-xl shadow-sm border border-gray-100">

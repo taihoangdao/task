@@ -29,7 +29,8 @@ interface TaskListProps {
   tasks: Task[]
   onToggleComplete: (id: number, completed: boolean) => void
   onTaskClick: (task: Task) => void
-  onDelete: (id: number) => void // Thêm prop xóa
+  onDelete: (id: number) => void
+  onDeleteGroup: (groupId: string) => void
   onTasksReordered?: (tasks: Task[]) => void
 }
 
@@ -38,6 +39,7 @@ export function TaskList({
   onToggleComplete,
   onTaskClick,
   onDelete,
+  onDeleteGroup,
   onTasksReordered,
 }: TaskListProps) {
   const [items, setItems] = useState(tasks)
@@ -154,6 +156,7 @@ export function TaskList({
                     onToggleComplete={onToggleComplete}
                     onTaskClick={onTaskClick}
                     onDelete={onDelete}
+                    onDeleteGroup={onDeleteGroup}
                   />
                 ))}
               </div>

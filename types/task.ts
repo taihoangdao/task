@@ -1,6 +1,5 @@
 // types/task.ts
 export type Priority = 'low' | 'medium' | 'high'
-
 export type RecurringType = 'daily' | 'weekly' | 'monthly' | null
 
 export interface Task {
@@ -17,6 +16,7 @@ export interface Task {
   is_recurring: boolean
   recurring_type: RecurringType
   recurring_end_date: string | null
+  recurring_group_id: string | null
   position: number
   created_at: string
   updated_at: string
@@ -34,6 +34,7 @@ export interface CreateTaskInput {
   is_recurring?: boolean
   recurring_type?: RecurringType
   recurring_end_date?: string
+  recurring_group_id?: string | null
 }
 
 export interface UpdateTaskInput extends Partial<CreateTaskInput> {

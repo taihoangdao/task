@@ -3,6 +3,7 @@
 
 import { useState } from 'react'
 import { format, addDays, addWeeks, addMonths } from 'date-fns'
+import { v4 as uuidv4 } from 'uuid'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -57,6 +58,7 @@ export function TaskForm({ open, onOpenChange, date, onSubmit, onSubmitBatch }: 
     color: '#4A6CF7',
     is_recurring: false,
     recurring_type: null,
+    recurring_group_id: null,
   })
   const [loading, setLoading] = useState(false)
   const [noEndDate, setNoEndDate] = useState(true)
@@ -108,6 +110,9 @@ export function TaskForm({ open, onOpenChange, date, onSubmit, onSubmitBatch }: 
           }
         }
 
+        // Tạo ID nhóm duy nhất
+        const groupId = uuidv4()
+
         // Tạo mảng tasks
         const tasks: CreateTaskInput[] = []
         let currentDate = new Date(startDate)
@@ -120,6 +125,7 @@ export function TaskForm({ open, onOpenChange, date, onSubmit, onSubmitBatch }: 
             date: format(currentDate, 'yyyy-MM-dd'),
             is_recurring: false,
             recurring_type: null,
+            recurring_group_id: groupId,
           })
 
           switch (formData.recurring_type) {
@@ -138,11 +144,12 @@ export function TaskForm({ open, onOpenChange, date, onSubmit, onSubmitBatch }: 
           count++
         }
 
-        // Gọi batch - chỉ 1 lần duy nhất
+        console.log(`📝 Đang tạo ${tasks.length} task lặp lại với groupId: ${groupId}`)
+
+        // Gọi batch
         if (onSubmitBatch) {
           await onSubmitBatch(tasks)
         } else {
-          // Fallback: tạo từng task
           for (const task of tasks) {
             await onSubmit(task)
           }
@@ -172,6 +179,7 @@ export function TaskForm({ open, onOpenChange, date, onSubmit, onSubmitBatch }: 
         color: '#4A6CF7',
         is_recurring: false,
         recurring_type: null,
+        recurring_group_id: null,
       })
       setNoEndDate(true)
       setRecurringEndDate(format(addDays(date, 30), 'yyyy-MM-dd'))

@@ -13,6 +13,7 @@ interface SwipeableTaskCardProps {
   onToggleComplete: (id: number, completed: boolean) => void
   onTaskClick: (task: Task) => void
   onDelete: (id: number) => void
+  onDeleteGroup: (groupId: string) => void
 }
 
 export function SwipeableTaskCard({
@@ -20,6 +21,7 @@ export function SwipeableTaskCard({
   onToggleComplete,
   onTaskClick,
   onDelete,
+  onDeleteGroup,
 }: SwipeableTaskCardProps) {
   const [offset, setOffset] = useState(0)
   const [isSwiping, setIsSwiping] = useState(false)
@@ -27,14 +29,12 @@ export function SwipeableTaskCard({
 
   const handlers = useSwipeable({
     onSwiping: (eventData) => {
-      // Chỉ cho phép vuốt sang trái (deltaX < 0)
       if (eventData.deltaX < 0) {
-        const newOffset = Math.max(eventData.deltaX, -160) // Giới hạn tối đa 160px
+        const newOffset = Math.max(eventData.deltaX, -160)
         setOffset(newOffset)
         setIsSwiping(true)
         setShowDelete(newOffset < -50)
       } else {
-        // Vuốt sang phải -> reset
         setOffset(0)
         setIsSwiping(false)
         setShowDelete(false)
@@ -42,7 +42,6 @@ export function SwipeableTaskCard({
     },
     onSwiped: (eventData) => {
       if (eventData.deltaX < -80) {
-        // Vuốt đủ xa -> giữ nguyên nút xóa
         setOffset(-160)
         setShowDelete(true)
       } else {
@@ -51,26 +50,32 @@ export function SwipeableTaskCard({
       }
       setIsSwiping(false)
     },
-    trackMouse: true, // Hỗ trợ chuột trên desktop
+    trackMouse: true,
     preventScrollOnSwipe: true,
     delta: 10,
   })
 
-  const handleDelete = () => {
-    onDelete(task.id)
-    // Reset sau khi xóa
-    setOffset(0)
-    setShowDelete(false)
-  }
-
-  const handleCancelDelete = () => {
+  const handleDeleteClick = () => {
+    // Kiểm tra nếu task thuộc nhóm lặp lại
+    if (task.recurring_group_id) {
+      // Hỏi người dùng có muốn xóa toàn bộ nhóm không
+      if (confirm('Task này thuộc chuỗi lặp lại. Bạn có muốn xóa tất cả các task trong chuỗi này không?')) {
+        // Xóa cả nhóm
+        onDeleteGroup(task.recurring_group_id)
+      } else {
+        // Chỉ xóa task hiện tại
+        onDelete(task.id)
+      }
+    } else {
+      // Task thường, xóa bình thường
+      onDelete(task.id)
+    }
     setOffset(0)
     setShowDelete(false)
   }
 
   return (
     <div className="relative overflow-hidden rounded-lg mb-3">
-      {/* Nút xóa ẩn bên phải */}
       <div
         className="absolute right-0 top-0 bottom-0 w-16 bg-red-500 flex items-center justify-center rounded-r-lg transition-opacity duration-200"
         style={{ opacity: showDelete ? 1 : 0 }}
@@ -79,13 +84,12 @@ export function SwipeableTaskCard({
           variant="ghost"
           size="icon"
           className="text-white hover:bg-red-600"
-          onClick={handleDelete}
+          onClick={handleDeleteClick}
         >
           <Trash2 className="h-5 w-5" />
         </Button>
       </div>
 
-      {/* Task card có thể dịch chuyển */}
       <div
         {...handlers}
         style={{
@@ -93,7 +97,7 @@ export function SwipeableTaskCard({
           transition: isSwiping
             ? 'none'
             : 'transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
-          touchAction: 'pan-y', // Cho phép cuộn dọc
+          touchAction: 'pan-y',
         }}
         className="relative z-10 touch-pan-y"
       >
