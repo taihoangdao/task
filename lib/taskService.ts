@@ -120,7 +120,6 @@ export async function getTaskById(id: number): Promise<Task | null> {
  */
 export async function createTask(task: CreateTaskInput): Promise<Task | null> {
   try {
-    // Lấy position tiếp theo cho ngày đó
     const nextPosition = await getNextPosition(task.date)
 
     const { data, error } = await supabase
@@ -291,57 +290,6 @@ export async function deleteTask(id: number): Promise<boolean> {
   }
 }
 
-/**
- * Xóa tất cả tasks trong một ngày
- * @param date - Ngày cần xóa (format: 'yyyy-MM-dd')
- * @returns Số lượng task đã xóa, hoặc -1 nếu thất bại
- */
-export async function deleteTasksByDate(date: string): Promise<number> {
-  try {
-    const { data, error, count } = await supabase
-      .from('tasks')
-      .delete()
-      .eq('date', date)
-      .select('id', { count: 'exact' })
-
-    if (error) {
-      console.error(`❌ Lỗi khi xóa tasks ngày ${date}:`, error)
-      return -1
-    }
-
-    console.log(`✅ Xóa ${count} tasks ngày ${date} thành công`)
-    return count || 0
-  } catch (error) {
-    console.error(`❌ Lỗi không xác định khi xóa tasks theo ngày:`, error)
-    return -1
-  }
-}
-
-/**
- * Xóa tất cả tasks (cẩn thận khi dùng)
- * @returns Số lượng task đã xóa, hoặc -1 nếu thất bại
- */
-export async function deleteAllTasks(): Promise<number> {
-  try {
-    const { data, error, count } = await supabase
-      .from('tasks')
-      .delete()
-      .neq('id', 0) // Xóa tất cả
-      .select('id', { count: 'exact' })
-
-    if (error) {
-      console.error('❌ Lỗi khi xóa tất cả tasks:', error)
-      return -1
-    }
-
-    console.log(`✅ Xóa ${count} tasks thành công`)
-    return count || 0
-  } catch (error) {
-    console.error('❌ Lỗi không xác định khi xóa tất cả tasks:', error)
-    return -1
-  }
-}
-
 // ============================================================
 // 5. HELPER FUNCTIONS
 // ============================================================
@@ -376,158 +324,8 @@ async function getNextPosition(date: string): Promise<number> {
   }
 }
 
-/**
- * Kiểm tra task có tồn tại không
- * @param id - ID của task
- * @returns true nếu tồn tại, false nếu không
- */
-export async function taskExists(id: number): Promise<boolean> {
-  try {
-    const { data, error } = await supabase
-      .from('tasks')
-      .select('id')
-      .eq('id', id)
-      .single()
-
-    if (error) {
-      return false
-    }
-
-    return data !== null
-  } catch (error) {
-    return false
-  }
-}
-
-/**
- * Đếm số lượng tasks trong một ngày
- * @param date - Ngày cần đếm (format: 'yyyy-MM-dd')
- * @returns Số lượng tasks
- */
-export async function countTasksByDate(date: string): Promise<number> {
-  try {
-    const { count, error } = await supabase
-      .from('tasks')
-      .select('id', { count: 'exact', head: true })
-      .eq('date', date)
-
-    if (error) {
-      console.error(`❌ Lỗi khi đếm tasks ngày ${date}:`, error)
-      return 0
-    }
-
-    return count || 0
-  } catch (error) {
-    console.error(`❌ Lỗi không xác định khi đếm tasks:`, error)
-    return 0
-  }
-}
-
-/**
- * Đếm số lượng tasks đã hoàn thành trong một ngày
- * @param date - Ngày cần đếm (format: 'yyyy-MM-dd')
- * @returns Số lượng tasks đã hoàn thành
- */
-export async function countCompletedTasksByDate(date: string): Promise<number> {
-  try {
-    const { count, error } = await supabase
-      .from('tasks')
-      .select('id', { count: 'exact', head: true })
-      .eq('date', date)
-      .eq('is_completed', true)
-
-    if (error) {
-      console.error(`❌ Lỗi khi đếm tasks hoàn thành ngày ${date}:`, error)
-      return 0
-    }
-
-    return count || 0
-  } catch (error) {
-    console.error(`❌ Lỗi không xác định khi đếm tasks hoàn thành:`, error)
-    return 0
-  }
-}
-
 // ============================================================
-// 6. RECURRING TASKS
-// ============================================================
-
-/**
- * Tạo các task lặp lại cho một khoảng thời gian
- * @param task - Task gốc có recurring
- * @param startDate - Ngày bắt đầu tạo
- * @param endDate - Ngày kết thúc tạo
- * @returns Mảng tasks đã tạo
- */
-export async function generateRecurringTasks(
-  task: Task,
-  startDate: string,
-  endDate: string
-): Promise<Task[]> {
-  try {
-    if (!task.is_recurring || !task.recurring_type) {
-      return []
-    }
-
-    const start = new Date(startDate)
-    const end = new Date(endDate)
-    const tasks: CreateTaskInput[] = []
-    let currentDate = new Date(start)
-
-    while (currentDate <= end) {
-      const dateStr = formatDate(currentDate)
-      
-      // Kiểm tra xem task đã tồn tại chưa
-      const existing = await getTasksByDate(dateStr)
-      const exists = existing.some(t => 
-        t.title === task.title && 
-        t.start_time === task.start_time &&
-        t.is_recurring === false
-      )
-
-      if (!exists) {
-        tasks.push({
-          title: task.title,
-          description: task.description || '',
-          start_time: task.start_time || '',
-          end_time: task.end_time || '',
-          date: dateStr,
-          priority: task.priority,
-          color: task.color || '',
-          is_recurring: false,
-          recurring_type: null
-        })
-      }
-
-      // Tăng ngày dựa trên recurring_type
-      switch (task.recurring_type) {
-        case 'daily':
-          currentDate.setDate(currentDate.getDate() + 1)
-          break
-        case 'weekly':
-          currentDate.setDate(currentDate.getDate() + 7)
-          break
-        case 'monthly':
-          currentDate.setMonth(currentDate.getMonth() + 1)
-          break
-        default:
-          currentDate.setDate(currentDate.getDate() + 1)
-      }
-    }
-
-    if (tasks.length === 0) {
-      return []
-    }
-
-    return await createMultipleTasks(tasks)
-  } catch (error) {
-    console.error('❌ Lỗi khi tạo tasks lặp lại:', error)
-    return []
-  }
-}
-
-// ============================================================
-// 7. UTILITY FUNCTIONS
+// 6. UTILITY FUNCTIONS
 // ============================================================
 
 /**
@@ -538,38 +336,4 @@ function formatDate(date: Date): string {
   const month = String(date.getMonth() + 1).padStart(2, '0')
   const day = String(date.getDate()).padStart(2, '0')
   return `${year}-${month}-${day}`
-}
-
-// ============================================================
-// 8. EXPORT ALL
-// ============================================================
-
-export default {
-  // Get
-  getTasksByDate,
-  getTasksByDateRange,
-  getAllTasks,
-  getTaskById,
-  
-  // Create
-  createTask,
-  createMultipleTasks,
-  
-  // Update
-  updateTask,
-  updateTaskPositions,
-  toggleTaskCompletion,
-  
-  // Delete
-  deleteTask,
-  deleteTasksByDate,
-  deleteAllTasks,
-  
-  // Helpers
-  taskExists,
-  countTasksByDate,
-  countCompletedTasksByDate,
-  
-  // Recurring
-  generateRecurringTasks,
 }
