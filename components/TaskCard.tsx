@@ -46,12 +46,13 @@ export function TaskCard({ task, onToggleComplete, onClick }: TaskCardProps) {
       onClick={onClick}
     >
       <div className="flex items-start gap-3">
+        {/* 👉 CHECKBOX LỚN HƠN */}
         <Checkbox 
           checked={task.is_completed}
           onCheckedChange={(checked) => {
             onToggleComplete(task.id, checked as boolean)
           }}
-          className="mt-1"
+          className="mt-1 h-6 w-6 border-2" // 👈 Thêm h-6 w-6 border-2
           onClick={(e) => e.stopPropagation()}
         />
         
