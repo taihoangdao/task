@@ -27,11 +27,11 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="Timeline" />
         <meta name="mobile-web-app-capable" content="yes" />
-        <meta name="theme-color" content="#2563EB" />
+        <meta name="theme-color" content="#EFF4F8" />
         <link rel="manifest" href="/manifest.json" />
         <link rel="apple-touch-icon" href="/tasklogo.png" />
       </head>
-      <body className={`${inter.className} bg-gray-50 min-h-screen`} suppressHydrationWarning>
+      <body className={`${inter.className} bg-[#EFF4F8] min-h-screen`} suppressHydrationWarning>
         <main className="max-w-4xl mx-auto p-4 md:p-8">
           {children}
         </main>
