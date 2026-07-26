@@ -20,7 +20,7 @@ interface EditTaskFormProps {
   task: Task | null
   onUpdate: (id: number, data: Partial<CreateTaskInput>) => Promise<void>
   onDelete: (id: number) => Promise<void>
-  onDeleteGroup?: (groupId: string) => Promise<void> // 👈 Thêm prop mới
+  onDeleteGroup?: (groupId: string) => Promise<void>
 }
 
 const priorityOptions: { value: Priority; label: string; color: string }[] = [
@@ -36,15 +36,12 @@ const recurringOptions: { value: RecurringType; label: string }[] = [
   { value: 'monthly', label: 'Hàng tháng' },
 ]
 
+// 👉 CHỈ GIỮ LẠI 4 MÀU (GIỐNG TaskForm)
 const colorOptions = [
-  '#4A6CF7',
-  '#FF6B6B',
-  '#F9A825',
-  '#26A69A',
-  '#9C27B0',
-  '#FF9800',
-  '#00BCD4',
-  '#E91E63',
+  '#4A6CF7', // Xanh dương
+  '#FF6B6B', // Đỏ
+  '#F9A825', // Vàng
+  '#26A69A', // Xanh lá
 ]
 
 export function EditTaskForm({ 
@@ -96,7 +93,6 @@ export function EditTaskForm({
   const handleDelete = async () => {
     if (!task) return
 
-    // 👉 KIỂM TRA: Nếu task thuộc nhóm lặp lại => xóa toàn bộ nhóm
     if (task.recurring_group_id && onDeleteGroup) {
       if (confirm('Task này thuộc chuỗi lặp lại. Bạn có muốn xóa tất cả các task trong chuỗi này không?')) {
         setLoading(true)
@@ -105,10 +101,8 @@ export function EditTaskForm({
         onOpenChange(false)
         return
       }
-      // Nếu người dùng chọn "Cancel", chỉ xóa task hiện tại
     }
 
-    // Xóa task thường hoặc chỉ xóa task hiện tại
     if (confirm(`Bạn có chắc muốn xóa task "${task.title}"?`)) {
       setLoading(true)
       await onDelete(task.id)
@@ -155,6 +149,7 @@ export function EditTaskForm({
               <Input
                 id="edit-start_time"
                 type="time"
+                step="60"
                 value={formData.start_time || ''}
                 onChange={(e) => handleChange('start_time', e.target.value)}
                 className="mt-1"
@@ -165,6 +160,7 @@ export function EditTaskForm({
               <Input
                 id="edit-end_time"
                 type="time"
+                step="60"
                 value={formData.end_time || ''}
                 onChange={(e) => handleChange('end_time', e.target.value)}
                 className="mt-1"
@@ -193,9 +189,10 @@ export function EditTaskForm({
             </div>
           </div>
 
+          {/* 👉 MÀU SẮC - CHỈ 4 MÀU */}
           <div>
             <Label>Màu sắc</Label>
-            <div className="flex gap-2 mt-1 flex-wrap">
+            <div className="flex gap-3 mt-1 flex-wrap">
               {colorOptions.map((color) => (
                 <button
                   key={color}
