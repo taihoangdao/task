@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { TaskList } from '@/components/TaskList'
 import { TaskForm } from '@/components/TaskForm'
 import { EditTaskForm } from '@/components/EditTaskForm'
+import { DeleteAllButton } from '@/components/DeleteAllButton'
 import {
   getTasksByDate,
   toggleTaskCompletion,
@@ -17,10 +18,12 @@ import {
   updateTask,
   deleteTask,
   deleteTasksByRecurringGroup,
+  deleteAllTasks,
 } from '@/lib/taskService'
 import { Task, CreateTaskInput } from '@/types/task'
 
 export default function Home() {
+  // ---------- STATES ----------
   const [tasks, setTasks] = useState<Task[]>([])
   const [selectedDate, setSelectedDate] = useState<Date>(new Date())
   const [loading, setLoading] = useState<boolean>(true)
@@ -29,10 +32,12 @@ export default function Home() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [mounted, setMounted] = useState<boolean>(false)
 
+  // ---------- MOUNT ----------
   useEffect(() => {
     setMounted(true)
   }, [])
 
+  // ---------- FETCH TASKS ----------
   const fetchTasks = useCallback(async () => {
     setLoading(true)
     try {
@@ -40,7 +45,7 @@ export default function Home() {
       const data = await getTasksByDate(dateStr)
       setTasks(data)
     } catch (error) {
-      console.error('Lỗi khi lấy tasks:', error)
+      console.error('❌ Lỗi khi lấy tasks:', error)
     } finally {
       setLoading(false)
     }
@@ -50,17 +55,18 @@ export default function Home() {
     fetchTasks()
   }, [fetchTasks])
 
+  // ---------- HANDLERS ----------
   const handleToggleComplete = useCallback(
     async (id: number, completed: boolean) => {
       try {
         const updated = await toggleTaskCompletion(id, completed)
         if (updated) {
-          setTasks((prevTasks) =>
-            prevTasks.map((task) => (task.id === id ? updated : task))
+          setTasks((prev) =>
+            prev.map((task) => (task.id === id ? updated : task))
           )
         }
       } catch (error) {
-        console.error('Lỗi khi cập nhật trạng thái task:', error)
+        console.error('❌ Lỗi khi cập nhật trạng thái task:', error)
       }
     },
     []
@@ -79,7 +85,7 @@ export default function Home() {
           await fetchTasks()
         }
       } catch (error) {
-        console.error('Lỗi khi cập nhật task:', error)
+        console.error('❌ Lỗi khi cập nhật task:', error)
       }
     },
     [fetchTasks]
@@ -93,7 +99,7 @@ export default function Home() {
           await fetchTasks()
         }
       } catch (error) {
-        console.error('Lỗi khi xóa task:', error)
+        console.error('❌ Lỗi khi xóa task:', error)
       }
     },
     [fetchTasks]
@@ -108,11 +114,23 @@ export default function Home() {
           await fetchTasks()
         }
       } catch (error) {
-        console.error('Lỗi khi xóa nhóm task:', error)
+        console.error('❌ Lỗi khi xóa nhóm task:', error)
       }
     },
     [fetchTasks]
   )
+
+  const handleDeleteAll = useCallback(async () => {
+    try {
+      const count = await deleteAllTasks()
+      if (count >= 0) {
+        await fetchTasks()
+      }
+    } catch (error) {
+      console.error('❌ Lỗi khi xóa tất cả task:', error)
+      throw error
+    }
+  }, [fetchTasks])
 
   const handleCreateTask = useCallback(
     async (taskData: CreateTaskInput) => {
@@ -120,7 +138,7 @@ export default function Home() {
         await createTask(taskData)
         await fetchTasks()
       } catch (error) {
-        console.error('Lỗi khi tạo task:', error)
+        console.error('❌ Lỗi khi tạo task:', error)
         throw error
       }
     },
@@ -130,21 +148,21 @@ export default function Home() {
   const handleCreateMultipleTasks = useCallback(
     async (tasksData: CreateTaskInput[]) => {
       try {
-        console.log(`📝 Đang tạo ${tasksData.length} task...`)
         const result = await createMultipleTasks(tasksData)
         console.log(`✅ Đã tạo ${result.length} task thành công`)
         await fetchTasks()
       } catch (error) {
-        console.error('Lỗi khi tạo nhiều tasks:', error)
+        console.error('❌ Lỗi khi tạo nhiều tasks:', error)
         throw error
       }
     },
     [fetchTasks]
   )
 
+  // ---------- DATE NAVIGATION ----------
   const changeDate = useCallback((days: number) => {
-    setSelectedDate((prevDate) => {
-      const newDate = new Date(prevDate)
+    setSelectedDate((prev) => {
+      const newDate = new Date(prev)
       newDate.setDate(newDate.getDate() + days)
       return newDate
     })
@@ -154,6 +172,7 @@ export default function Home() {
     setSelectedDate(new Date())
   }, [])
 
+  // ---------- FORMAT HELPERS ----------
   const formatDateDisplay = useCallback((date: Date) => {
     if (isToday(date)) {
       return 'Hôm nay'
@@ -161,14 +180,17 @@ export default function Home() {
     return format(date, 'EEEE, dd/MM/yyyy', { locale: vi })
   }, [])
 
+  // ---------- STATS ----------
   const completedTasks = tasks.filter((t) => t.is_completed).length
   const pendingTasks = tasks.length - completedTasks
   const isSelectedDateToday = isToday(selectedDate)
 
+  // ---------- RENDER ----------
   if (!mounted) return null
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* HEADER */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-10 shadow-sm">
         <div className="max-w-4xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
@@ -216,19 +238,23 @@ export default function Home() {
               {formatDateDisplay(selectedDate)}
             </h2>
 
-            <Button
-              size="sm"
-              className="gap-1 bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
-              onClick={() => setFormOpen(true)}
-            >
-              <Plus className="h-4 w-4" />
-              <span className="hidden sm:inline">Thêm task</span>
-              <span className="sm:hidden">Thêm</span>
-            </Button>
+            <div className="flex items-center gap-2">
+              <DeleteAllButton onDeleteAll={handleDeleteAll} taskCount={tasks.length} />
+              <Button
+                size="sm"
+                className="gap-1 bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
+                onClick={() => setFormOpen(true)}
+              >
+                <Plus className="h-4 w-4" />
+                <span className="hidden sm:inline">Thêm task</span>
+                <span className="sm:hidden">Thêm</span>
+              </Button>
+            </div>
           </div>
         </div>
       </header>
 
+      {/* MAIN CONTENT */}
       <main className="max-w-4xl mx-auto px-4 py-6">
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20">
@@ -245,6 +271,7 @@ export default function Home() {
               onDeleteGroup={handleDeleteGroup}
             />
 
+            {/* STATS */}
             <div className="mt-8 p-4 bg-white rounded-xl shadow-sm border border-gray-100">
               <div className="grid grid-cols-3 gap-4 text-center">
                 <div>
@@ -280,6 +307,7 @@ export default function Home() {
         )}
       </main>
 
+      {/* MODALS */}
       <TaskForm
         open={formOpen}
         onOpenChange={setFormOpen}
@@ -294,6 +322,7 @@ export default function Home() {
         task={selectedTask}
         onUpdate={handleUpdateTask}
         onDelete={handleDeleteTask}
+        onDeleteGroup={handleDeleteGroup}
       />
     </div>
   )

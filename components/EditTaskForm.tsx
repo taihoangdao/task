@@ -20,6 +20,7 @@ interface EditTaskFormProps {
   task: Task | null
   onUpdate: (id: number, data: Partial<CreateTaskInput>) => Promise<void>
   onDelete: (id: number) => Promise<void>
+  onDeleteGroup?: (groupId: string) => Promise<void> // 👈 Thêm prop mới
 }
 
 const priorityOptions: { value: Priority; label: string; color: string }[] = [
@@ -46,7 +47,14 @@ const colorOptions = [
   '#E91E63',
 ]
 
-export function EditTaskForm({ open, onOpenChange, task, onUpdate, onDelete }: EditTaskFormProps) {
+export function EditTaskForm({ 
+  open, 
+  onOpenChange, 
+  task, 
+  onUpdate, 
+  onDelete,
+  onDeleteGroup 
+}: EditTaskFormProps) {
   const [formData, setFormData] = useState<Partial<CreateTaskInput>>({})
   const [loading, setLoading] = useState(false)
 
@@ -87,6 +95,20 @@ export function EditTaskForm({ open, onOpenChange, task, onUpdate, onDelete }: E
 
   const handleDelete = async () => {
     if (!task) return
+
+    // 👉 KIỂM TRA: Nếu task thuộc nhóm lặp lại => xóa toàn bộ nhóm
+    if (task.recurring_group_id && onDeleteGroup) {
+      if (confirm('Task này thuộc chuỗi lặp lại. Bạn có muốn xóa tất cả các task trong chuỗi này không?')) {
+        setLoading(true)
+        await onDeleteGroup(task.recurring_group_id)
+        setLoading(false)
+        onOpenChange(false)
+        return
+      }
+      // Nếu người dùng chọn "Cancel", chỉ xóa task hiện tại
+    }
+
+    // Xóa task thường hoặc chỉ xóa task hiện tại
     if (confirm(`Bạn có chắc muốn xóa task "${task.title}"?`)) {
       setLoading(true)
       await onDelete(task.id)
@@ -213,6 +235,14 @@ export function EditTaskForm({ open, onOpenChange, task, onUpdate, onDelete }: E
             </div>
           </div>
 
+          {task.recurring_group_id && (
+            <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
+              <p className="text-xs text-blue-700">
+                🔄 Task này thuộc chuỗi lặp lại. Xóa task sẽ ảnh hưởng đến các task trong chuỗi.
+              </p>
+            </div>
+          )}
+
           <div className="flex justify-between items-center pt-4 border-t border-gray-200">
             <Button
               type="button"
@@ -222,7 +252,7 @@ export function EditTaskForm({ open, onOpenChange, task, onUpdate, onDelete }: E
               className="gap-2"
             >
               <Trash2 className="h-4 w-4" />
-              Xóa
+              {task.recurring_group_id ? 'Xóa chuỗi lặp lại' : 'Xóa'}
             </Button>
             <div className="flex gap-3">
               <Button

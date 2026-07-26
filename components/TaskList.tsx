@@ -131,11 +131,7 @@ export function TaskList({
       onDragEnd={handleDragEnd}
       modifiers={[restrictToVerticalAxis, restrictToParentElement]}
     >
-      <div
-        className={`space-y-6 transition-opacity ${
-          isDragging ? 'opacity-80' : 'opacity-100'
-        }`}
-      >
+      <div className={`space-y-6 transition-opacity ${isDragging ? 'opacity-80' : 'opacity-100'}`}>
         {sortedGroups.map((hour) => (
           <div key={hour}>
             {hour !== 'other' && (
@@ -145,7 +141,7 @@ export function TaskList({
               </div>
             )}
             <SortableContext
-              items={groupedTasks[hour].map((task) => task.id)}
+              items={groupedTasks[hour].map(task => task.id)}
               strategy={verticalListSortingStrategy}
             >
               <div>

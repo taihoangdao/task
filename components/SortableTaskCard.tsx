@@ -10,7 +10,7 @@ interface SortableTaskCardProps {
   task: Task
   onToggleComplete: (id: number, completed: boolean) => void
   onClick?: () => void
-  disabled?: boolean // Thêm prop để vô hiệu hóa drag khi vuốt
+  disabled?: boolean
 }
 
 export function SortableTaskCard({
