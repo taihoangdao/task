@@ -128,11 +128,9 @@ export async function createMultipleTasks(tasks: CreateTaskInput[]): Promise<Tas
   if (tasks.length === 0) return []
 
   try {
-    // 1. Lấy danh sách các ngày có task
     const dates = tasks.map(t => t.date)
     const uniqueDates = [...new Set(dates)]
     
-    // 2. Kiểm tra task đã tồn tại trong các ngày này
     const { data: existingTasks, error: fetchError } = await supabase
       .from('tasks')
       .select('date, title, start_time, recurring_group_id')
@@ -143,14 +141,12 @@ export async function createMultipleTasks(tasks: CreateTaskInput[]): Promise<Tas
       return []
     }
 
-    // Tạo set các key để kiểm tra nhanh
     const existingKeys = new Set()
     existingTasks?.forEach(task => {
       const key = `${task.date}|${task.title}|${task.start_time || ''}`
       existingKeys.add(key)
     })
 
-    // 3. Lọc ra các task chưa tồn tại
     const newTasks = tasks.filter(task => {
       const key = `${task.date}|${task.title}|${task.start_time || ''}`
       return !existingKeys.has(key)
@@ -161,7 +157,6 @@ export async function createMultipleTasks(tasks: CreateTaskInput[]): Promise<Tas
       return []
     }
 
-    // 4. Lấy position cho từng task
     const tasksWithPosition = await Promise.all(
       newTasks.map(async (task, index) => {
         const nextPosition = await getNextPosition(task.date)
@@ -174,7 +169,6 @@ export async function createMultipleTasks(tasks: CreateTaskInput[]): Promise<Tas
       })
     )
 
-    // 5. Insert batch
     const { data, error } = await supabase
       .from('tasks')
       .insert(tasksWithPosition)
@@ -289,19 +283,30 @@ export async function deleteTask(id: number): Promise<boolean> {
  */
 export async function deleteTasksByRecurringGroup(groupId: string): Promise<number> {
   try {
-    const { error, count } = await supabase
+    // Bước 1: Đếm số lượng task trong nhóm
+    const { count: taskCount, error: countError } = await supabase
+      .from('tasks')
+      .select('id', { count: 'exact', head: true })
+      .eq('recurring_group_id', groupId)
+
+    if (countError) {
+      console.error(`❌ Lỗi khi đếm task trong nhóm ${groupId}:`, countError)
+      return -1
+    }
+
+    // Bước 2: Xóa task trong nhóm
+    const { error } = await supabase
       .from('tasks')
       .delete()
       .eq('recurring_group_id', groupId)
-      .select('id', { count: 'exact', head: true })
 
     if (error) {
       console.error(`❌ Lỗi khi xóa nhóm lặp lại ${groupId}:`, error)
       return -1
     }
 
-    console.log(`✅ Đã xóa ${count} task trong nhóm ${groupId}`)
-    return count || 0
+    console.log(`✅ Đã xóa ${taskCount || 0} task trong nhóm ${groupId}`)
+    return taskCount || 0
   } catch (error) {
     console.error('❌ Lỗi không xác định khi xóa nhóm lặp lại:', error)
     return -1
@@ -313,19 +318,30 @@ export async function deleteTasksByRecurringGroup(groupId: string): Promise<numb
  */
 export async function deleteAllTasks(): Promise<number> {
   try {
-    const { error, count } = await supabase
+    // Bước 1: Đếm số lượng task
+    const { count: taskCount, error: countError } = await supabase
+      .from('tasks')
+      .select('id', { count: 'exact', head: true })
+      .neq('id', 0)
+
+    if (countError) {
+      console.error('❌ Lỗi khi đếm tasks:', countError)
+      return -1
+    }
+
+    // Bước 2: Xóa tất cả
+    const { error } = await supabase
       .from('tasks')
       .delete()
       .neq('id', 0)
-      .select('id', { count: 'exact', head: true })
 
     if (error) {
       console.error('❌ Lỗi khi xóa tất cả tasks:', error)
       return -1
     }
 
-    console.log(`✅ Đã xóa ${count} task`)
-    return count || 0
+    console.log(`✅ Đã xóa ${taskCount || 0} task`)
+    return taskCount || 0
   } catch (error) {
     console.error('❌ Lỗi không xác định khi xóa tất cả:', error)
     return -1
