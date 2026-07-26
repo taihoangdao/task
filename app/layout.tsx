@@ -8,6 +8,9 @@ const inter = Inter({ subsets: ['latin'] })
 export const metadata: Metadata = {
   title: 'Timeline App',
   description: 'Ứng dụng quản lý công việc theo timeline',
+  icons: {
+    icon: '/tasklogo.png',
+  },
 }
 
 export default function RootLayout({
@@ -16,8 +19,8 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="vi">
-      <body className={`${inter.className} bg-gray-50 min-h-screen`}>
+    <html lang="vi" suppressHydrationWarning>
+      <body className={`${inter.className} bg-gray-50 min-h-screen`} suppressHydrationWarning>
         <main className="max-w-4xl mx-auto p-4 md:p-8">
           {children}
         </main>
