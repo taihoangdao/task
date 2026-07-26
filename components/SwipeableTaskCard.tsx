@@ -27,22 +27,30 @@ export function SwipeableTaskCard({
   const [isSwiping, setIsSwiping] = useState(false)
   const [showDelete, setShowDelete] = useState(false)
 
+  // Kích thước nút xóa (khoảng 60px)
+  const DELETE_BUTTON_WIDTH = 60
+
   const handlers = useSwipeable({
     onSwiping: (eventData) => {
+      // Chỉ cho phép vuốt sang trái (deltaX < 0)
       if (eventData.deltaX < 0) {
-        const newOffset = Math.max(eventData.deltaX, -160)
+        // Giới hạn tối đa bằng chiều rộng nút xóa
+        const newOffset = Math.max(eventData.deltaX, -DELETE_BUTTON_WIDTH)
         setOffset(newOffset)
         setIsSwiping(true)
-        setShowDelete(newOffset < -50)
+        // Hiện nút xóa khi vuốt hơn 30px
+        setShowDelete(newOffset < -30)
       } else {
+        // Vuốt sang phải -> reset
         setOffset(0)
         setIsSwiping(false)
         setShowDelete(false)
       }
     },
     onSwiped: (eventData) => {
-      if (eventData.deltaX < -80) {
-        setOffset(-160)
+      if (eventData.deltaX < -40) {
+        // Vuốt đủ xa -> giữ nguyên nút xóa
+        setOffset(-DELETE_BUTTON_WIDTH)
         setShowDelete(true)
       } else {
         setOffset(0)
@@ -56,40 +64,42 @@ export function SwipeableTaskCard({
   })
 
   const handleDeleteClick = () => {
-    // Kiểm tra nếu task thuộc nhóm lặp lại
     if (task.recurring_group_id) {
-      // Hỏi người dùng có muốn xóa toàn bộ nhóm không
-      if (confirm('Task này thuộc chuỗi lặp lại. Bạn có muốn xóa tất cả các task trong chuỗi này không?')) {
-        // Xóa cả nhóm
-        onDeleteGroup(task.recurring_group_id)
-      } else {
-        // Chỉ xóa task hiện tại
-        onDelete(task.id)
-      }
+      onDeleteGroup(task.recurring_group_id)
     } else {
-      // Task thường, xóa bình thường
       onDelete(task.id)
     }
     setOffset(0)
     setShowDelete(false)
   }
 
+  const handleCancelDelete = () => {
+    setOffset(0)
+    setShowDelete(false)
+  }
+
   return (
     <div className="relative overflow-hidden rounded-lg mb-3">
+      {/* Nút xóa ẩn bên phải */}
       <div
-        className="absolute right-0 top-0 bottom-0 w-16 bg-red-500 flex items-center justify-center rounded-r-lg transition-opacity duration-200"
-        style={{ opacity: showDelete ? 1 : 0 }}
+        className="absolute right-0 top-0 bottom-0 flex items-center justify-center rounded-r-lg transition-opacity duration-200"
+        style={{
+          width: DELETE_BUTTON_WIDTH,
+          backgroundColor: '#EF4444',
+          opacity: showDelete ? 1 : 0,
+        }}
       >
         <Button
           variant="ghost"
           size="icon"
-          className="text-white hover:bg-red-600"
+          className="text-white hover:bg-red-600 h-8 w-8"
           onClick={handleDeleteClick}
         >
-          <Trash2 className="h-5 w-5" />
+          <Trash2 className="h-4 w-4" />
         </Button>
       </div>
 
+      {/* Task card có thể dịch chuyển */}
       <div
         {...handlers}
         style={{
